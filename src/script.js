@@ -21,10 +21,15 @@ const scene = new THREE.Scene()
 const parameters = {
 
 }
-parameters.count = 10000
+parameters.count = 100000
 parameters.size = .01
 parameters.radius = 5
-parameters.branches = 3
+parameters.branches = 4
+parameters.spin = 1
+parameters.randomNess = .2
+parameters.randomNessPower = 3
+parameters.insideColor = "#ff6030"
+parameters.outsideColor = "#1b3984"
 
 let geometry = null
 let material = null
@@ -38,21 +43,40 @@ const generateGalaxy = () => {
     }
     geometry = new THREE.BufferGeometry()
     const poistionArray = new Float32Array(parameters.count * 3)
+    const positionColorArray = new Float32Array(parameters.count * 3)
+    const colorInside = new THREE.Color(parameters.insideColor)
+    const colorOutside = new THREE.Color(parameters.outsideColor)
     for (let i = 0; i < parameters.count; i++) {
         const i3 = i * 3
         const radius = Math.random() * parameters.radius
-        console.log(radius);
+        const spinAngle = radius * parameters.spin
+        // console.log(radius);
         const branchAngle = (i % parameters.branches) / parameters.branches * Math.PI * 2
-        poistionArray[i3 + 0] = Math.cos(branchAngle) * radius
-        poistionArray[i3 + 1] = 0
-        poistionArray[i3 + 2] = Math.sin(branchAngle) * radius
-        // poistionArray[i3 + 0] = (Math.random() - .5) * 3
-        // poistionArray[i3 + 1] = (Math.random() - .5) * 3
-        // poistionArray[i3 + 2] = (Math.random() - .5) * 3
+
+        const randomX = Math.pow(Math.random(), parameters.randomNessPower) * (Math.random() < 0.5 ? 1 : -1)
+        const randomY = Math.pow(Math.random(), parameters.randomNessPower) * (Math.random() < 0.5 ? 1 : -1)
+        const randomZ = Math.pow(Math.random(), parameters.randomNessPower) * (Math.random() < 0.5 ? 1 : -1)
+
+        poistionArray[i3 + 0] = Math.cos(branchAngle + spinAngle) * radius + randomX
+        poistionArray[i3 + 1] = randomY
+        poistionArray[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ
+        // console.log(Math.sin(branchAngle) * radius, "z")
+        //color
+
+
+        const mixedColor = colorInside.clone()
+        mixedColor.lerp(colorOutside, radius / parameters.radius)
+        positionColorArray[i3 + 0] = mixedColor.r
+        positionColorArray[i3 + 1] = mixedColor.g
+        positionColorArray[i3 + 2] = mixedColor.b
     }
     geometry.setAttribute(
         "position",
         new THREE.BufferAttribute(poistionArray, 3)
+    )
+    geometry.setAttribute(
+        "color",
+        new THREE.BufferAttribute(positionColorArray, 3)
     )
 
     //Material
@@ -60,7 +84,8 @@ const generateGalaxy = () => {
         size: parameters.size,
         sizeAttenuation: true,
         depthWrite: false,
-        blending: THREE.AdditiveBlending
+        blending: THREE.AdditiveBlending,
+        vertexColors: true
     })
 
     //points
@@ -74,6 +99,11 @@ gui.add(parameters, "count").min(100).max(100000).step(100).onFinishChange(gener
 gui.add(parameters, "size").max(.1).min(.001).step(.01).onFinishChange(generateGalaxy)
 gui.add(parameters, "radius").max(20).min(.01).step(.01).onFinishChange(generateGalaxy)
 gui.add(parameters, "branches").max(20).min(2).step(1).onFinishChange(generateGalaxy)
+gui.add(parameters, "spin").max(5).min(-5).step(.001).onFinishChange(generateGalaxy)
+gui.add(parameters, "randomNess").max(2).min(0).step(.001).onFinishChange(generateGalaxy)
+gui.add(parameters, "randomNessPower").max(10).min(1).step(.001).onFinishChange(generateGalaxy)
+gui.addColor(parameters, "insideColor").onFinishChange(generateGalaxy)
+gui.addColor(parameters, "outsideColor").onFinishChange(generateGalaxy)
 /**
  * Sizes
  */
@@ -126,8 +156,7 @@ const clock = new THREE.Clock()
 
 const tick = () => {
     const elapsedTime = clock.getElapsedTime()
-
-    // Update controls
+    points.rotation.y = elapsedTime * .07
     controls.update()
 
     // Render
